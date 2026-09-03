@@ -1,26 +1,115 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --charcoal: #17150f;
+  --charcoal-raised: #211d15;
+  --charcoal-line: #332c1e;
+  --ivory: #f3efe4;
+  --stone: #a39a86;
+  --brass: #c6952e;
+  --brass-soft: #8a6c2c;
+  /* Éclairci depuis #2e6e7e (3.17:1, insuffisant) vers 6.38:1 sur charbon :
+     la teinte sert aussi bien en texte qu'en décoration. */
+  --djerba-blue: #5aa3b5;
+  --djerba-blue-deep: #2e6e7e;
+
+  /* États sémantiques des réservations — chacun couplé à une icône dans les
+     composants, jamais la couleur seule (accessibilité). */
+  --success: #5cb88a;
+  --success-bg: #16241c;
+  --warning: #e0b34a;
+  --warning-bg: #2a2212;
+  --danger: #e0796a;
+  --danger-bg: #2a1814;
+  --info: var(--djerba-blue);
+  --info-bg: #16262a;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-charcoal: var(--charcoal);
+  --color-charcoal-raised: var(--charcoal-raised);
+  --color-charcoal-line: var(--charcoal-line);
+  --color-ivory: var(--ivory);
+  --color-stone: var(--stone);
+  --color-brass: var(--brass);
+  --color-brass-soft: var(--brass-soft);
+  --color-djerba-blue: var(--djerba-blue);
+  --color-djerba-blue-deep: var(--djerba-blue-deep);
+  --color-success: var(--success);
+  --color-success-bg: var(--success-bg);
+  --color-warning: var(--warning);
+  --color-warning-bg: var(--warning-bg);
+  --color-danger: var(--danger);
+  --color-danger-bg: var(--danger-bg);
+  --color-info: var(--info);
+  --color-info-bg: var(--info-bg);
+  /* Polices injectées par next/font (voir src/app/layout.tsx) : auto-hébergées,
+     zéro requête vers Google au chargement. */
+  --font-display: var(--font-heading-src), ui-sans-serif, system-ui, sans-serif;
+  --font-body: var(--font-body-src), ui-sans-serif, system-ui, sans-serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  scroll-behavior: smooth;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--charcoal);
+  color: var(--ivory);
+  font-family: var(--font-body);
+}
+
+/* Focus clavier visible partout : ne jamais retirer sans le remplacer. */
+:focus-visible {
+  outline: 2px solid var(--brass);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.rise-in > * {
+  animation: rise-in 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.rise-in > *:nth-child(1) {
+  animation-delay: 0.05s;
+}
+.rise-in > *:nth-child(2) {
+  animation-delay: 0.16s;
+}
+.rise-in > *:nth-child(3) {
+  animation-delay: 0.27s;
+}
+.rise-in > *:nth-child(4) {
+  animation-delay: 0.38s;
+}
+
+.sign-glow {
+  filter: drop-shadow(0 0 18px rgba(198, 149, 46, 0.45))
+    drop-shadow(0 0 3px rgba(243, 239, 228, 0.35));
+}
+
+/* Défilement horizontal contenu pour les tableaux/plannings larges, sans
+   jamais faire déborder la page elle-même. */
+.scroll-x {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
 }
