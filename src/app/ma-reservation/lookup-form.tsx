@@ -4,8 +4,7 @@ import { useActionState, useState } from "react";
 import { CalendarDays, Search, XCircle } from "lucide-react";
 
 import { cancelBookingAction, lookupBookingAction } from "@/lib/actions/booking";
-import { idleState } from "@/lib/actions/types";
-import type { BookingStatus } from "@/lib/db/schema";
+import { idleLookupState, idleState, type LookedUpBooking } from "@/lib/actions/types";
 import { formatDateTime } from "@/lib/time";
 import { formatPrice } from "@/lib/utils";
 import { TextField } from "@/components/ui/field";
@@ -14,30 +13,15 @@ import { FormAlert } from "@/components/form-alert";
 import { StatusBadge } from "@/components/ui/badge";
 
 export function LookupForm() {
-  const [lookupState, lookupAction] = useActionState(lookupBookingAction, idleState);
-  const [cancelState, cancelAction] = useActionState(cancelBookingAction, idleState);
-  const [reference, setReference] = useState("");
+  const [lookupState, lookupAction] = useActionState(lookupBookingAction, idleLookupState);
   const [phone, setPhone] = useState("");
 
-  // Après une annulation réussie, on ne peut plus rien afficher de l'ancienne
-  // consultation : elle refléterait un état obsolète.
-  const booking = cancelState.status === "success" ? null : lookupState.data;
-  const cancellable = booking && (booking.status === "pending" || booking.status === "confirmed");
+  const bookings = lookupState.status === "success" ? lookupState.bookings : undefined;
 
   return (
     <div className="rise-in">
-      {!booking ? (
+      {!bookings ? (
         <form action={lookupAction} className="flex flex-col gap-4">
-          <TextField
-            label="Code de réservation"
-            name="reference"
-            placeholder="K7P2QM"
-            autoComplete="off"
-            value={reference}
-            onChange={(e) => setReference(e.target.value)}
-            error={lookupState.errors?.reference}
-            required
-          />
           <TextField
             label="Numéro de téléphone"
             name="phone"
@@ -57,41 +41,10 @@ export function LookupForm() {
           </SubmitButton>
         </form>
       ) : (
-        <div className="flex flex-col gap-6">
-          <div className="rounded-sm border border-brass-soft/30 bg-charcoal-raised p-6">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="font-display text-2xl font-semibold tracking-[0.15em] text-brass">
-                  {booking.reference}
-                </p>
-                <p className="mt-1 font-medium">{booking.serviceName}</p>
-              </div>
-              <StatusBadge status={booking.status as BookingStatus} />
-            </div>
-            <dl className="mt-4 space-y-2 text-sm text-stone">
-              <div className="flex items-center gap-1.5">
-                <CalendarDays size={14} aria-hidden="true" />
-                <dd className="text-ivory">{formatDateTime(new Date(booking.startsAt))}</dd>
-              </div>
-              <div className="flex items-center justify-between">
-                <dt>Montant</dt>
-                <dd className="text-ivory">{formatPrice(Number(booking.priceMillimes))}</dd>
-              </div>
-            </dl>
-          </div>
-
-          {cancellable && (
-            <form action={cancelAction} className="flex flex-col gap-3">
-              <input type="hidden" name="reference" value={booking.reference} />
-              <input type="hidden" name="phone" value={booking.phone} />
-              <FormAlert state={cancelState} />
-              <CancelButton />
-            </form>
-          )}
-
-          {!cancellable && cancelState.status !== "success" && (
-            <p className="text-sm text-stone">Ce rendez-vous ne peut plus être annulé en ligne.</p>
-          )}
+        <div className="flex flex-col gap-4">
+          {bookings.map((booking) => (
+            <BookingCard key={booking.id} booking={booking} phone={phone} />
+          ))}
 
           <button
             type="button"
@@ -106,11 +59,43 @@ export function LookupForm() {
   );
 }
 
-function CancelButton() {
+function BookingCard({ booking, phone }: { booking: LookedUpBooking; phone: string }) {
+  const [cancelState, cancelAction] = useActionState(cancelBookingAction, idleState);
+
+  if (cancelState.status === "success") return null;
+
+  const cancellable = booking.status === "pending" || booking.status === "confirmed";
+
   return (
-    <SubmitButton variant="danger" className="self-start">
-      <XCircle size={16} aria-hidden="true" />
-      Annuler ce rendez-vous
-    </SubmitButton>
+    <div className="rounded-sm border border-brass-soft/30 bg-charcoal-raised p-6">
+      <div className="flex items-start justify-between gap-4">
+        <p className="font-medium">{booking.serviceName}</p>
+        <StatusBadge status={booking.status} />
+      </div>
+      <dl className="mt-3 space-y-2 text-sm text-stone">
+        <div className="flex items-center gap-1.5">
+          <CalendarDays size={14} aria-hidden="true" />
+          <dd className="text-ivory">{formatDateTime(new Date(booking.startsAt))}</dd>
+        </div>
+        <div className="flex items-center justify-between">
+          <dt>Montant</dt>
+          <dd className="text-ivory">{formatPrice(booking.priceMillimes)}</dd>
+        </div>
+      </dl>
+
+      {cancellable ? (
+        <form action={cancelAction} className="mt-4 flex flex-col gap-3">
+          <input type="hidden" name="bookingId" value={booking.id} />
+          <input type="hidden" name="phone" value={phone} />
+          <FormAlert state={cancelState} />
+          <SubmitButton variant="danger" size="sm" className="self-start">
+            <XCircle size={14} aria-hidden="true" />
+            Annuler ce rendez-vous
+          </SubmitButton>
+        </form>
+      ) : (
+        <p className="mt-4 text-xs text-stone">Ce rendez-vous ne peut plus être annulé en ligne.</p>
+      )}
+    </div>
   );
 }

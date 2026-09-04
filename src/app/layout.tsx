@@ -23,7 +23,12 @@ const body = IBM_Plex_Sans({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://chelba-coif.tn"),
+  // `process.env` lu directement (pas via `env()`) : cet objet est évalué au
+  // chargement du module, avant toute requête — passer par la validation
+  // stricte d'`env()` ici romprait le build tant que SITE_URL n'est pas
+  // renseignée. Une URL de secours est toujours disponible, sans conséquence
+  // de sécurité puisque ce n'est pas un secret.
+  metadataBase: new URL(process.env.SITE_URL || "https://chelba-coif.tn"),
   title: {
     default: "Chelba Coif — Barbershop à Djerba",
     template: "%s — Chelba Coif",

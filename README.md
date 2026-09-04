@@ -37,6 +37,14 @@ Renseignez dans `.env.local` :
 - `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` — Dashboard Cloudinary.
 - `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME` — **la même valeur** que `CLOUDINARY_CLOUD_NAME` (ce n'est
   pas un secret, il doit juste être accessible côté navigateur pour afficher les images).
+- `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, `ADMIN_NOTIFICATION_EMAIL` — **facultatifs.** Sans eux,
+  le site fonctionne normalement mais l'admin ne reçoit pas d'e-mail à chaque nouvelle réservation.
+  Pour l'activer : compte gratuit sur [resend.com](https://resend.com), récupérez une clé API, et
+  utilisez `onboarding@resend.dev` comme `RESEND_FROM_EMAIL` tant que vous n'avez pas de domaine
+  vérifié (fonctionne immédiatement, sans configuration DNS).
+- `SITE_URL` — l'URL publique du site une fois déployé (ex. `https://chelba-coif.vercel.app`).
+  Sert uniquement à construire des liens absolus (lien vers le dashboard dans l'e-mail de
+  notification). Peut rester vide en développement.
 
 ### 3. Schéma de base de données
 
@@ -79,12 +87,13 @@ npm run dev
 
 **Public**
 - Vitrine (prestations, galerie, horaires, contact)
-- Réservation en ligne sans compte (nom + téléphone), avec code de suivi
-- Suivi / annulation d'une réservation via ce code
+- Réservation en ligne sans compte (nom + téléphone)
+- Suivi / annulation d'une réservation avec le seul numéro de téléphone
 - Compte client optionnel : historique des rendez-vous, programme de fidélité
 
 **Administration** (`/admin`)
 - Tableau de bord : statistiques (réservations, CA, taux d'annulation, heures de pointe)
+- Notification e-mail à chaque nouvelle réservation (facultatif, voir `RESEND_API_KEY` ci-dessus)
 - Gestion des réservations (statut, notes internes)
 - Fiche client : fréquence de visite, historique, points de fidélité, récompenses
 - Gestion des prestations et de la galerie (dépôt d'images vers Cloudinary)
@@ -102,3 +111,5 @@ npm run dev
 - Content-Security-Policy stricte à base de nonce, en-têtes de sécurité (`X-Frame-Options`,
   `Referrer-Policy`, etc.)
 - Validation systématique des entrées côté serveur (Zod), jamais de confiance au seul formulaire
+- Le suivi d'une réservation ne demande que le numéro de téléphone (choix assumé pour la
+  simplicité) : quiconque connaît le numéro d'un client peut voir et annuler son rendez-vous

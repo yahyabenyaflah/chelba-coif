@@ -346,11 +346,11 @@ function BookingConfirmation({ reference }: { reference: string }) {
       </span>
       <h2 className="mt-4 font-display text-2xl font-semibold">Demande enregistrée</h2>
       <p className="mt-2 max-w-sm text-stone">
-        Le salon confirmera votre rendez-vous prochainement. Conservez ce code pour suivre ou
-        annuler votre réservation :
+        Le salon confirmera votre rendez-vous prochainement. Vous pourrez le suivre ou l&apos;annuler
+        à tout moment avec votre numéro de téléphone.
       </p>
-      <p className="mt-4 font-display text-3xl font-semibold tracking-[0.2em] text-brass">
-        {reference}
+      <p className="mt-4 text-xs text-stone">
+        Référence : <span className="font-medium text-ivory">{reference}</span>
       </p>
       <a
         href="/ma-reservation"

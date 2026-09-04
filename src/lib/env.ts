@@ -11,6 +11,15 @@ import { z } from "zod";
  * message explicite plutôt qu'un `undefined` qui se propage.
  */
 
+/**
+ * `KEY=""` dans .env.local donne la chaîne vide `""`, pas `undefined` — un
+ * simple `.optional()` ne suffit donc pas à traiter « non renseigné » comme
+ * absent. Ce préprocesseur ramène la chaîne vide à `undefined` avant que le
+ * schéma sous-jacent ne s'applique.
+ */
+const optional = <T extends z.ZodTypeAny>(inner: T) =>
+  z.preprocess((v) => (v === "" ? undefined : v), inner.optional());
+
 const schema = z.object({
   DATABASE_URL: z
     .string()
@@ -30,6 +39,20 @@ const schema = z.object({
   // Doit porter la même valeur que CLOUDINARY_CLOUD_NAME : voir
   // src/lib/cloudinary-constants.ts pour pourquoi ce doublon existe.
   NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME: z.string().min(1),
+
+  // Notification e-mail à l'admin (nouvelle réservation). Facultatifs : tant
+  // qu'ils ne sont pas renseignés, l'envoi est simplement désactivé plutôt
+  // que de faire échouer toute l'application (voir src/lib/email.ts).
+  RESEND_API_KEY: optional(z.string().min(1)),
+  RESEND_FROM_EMAIL: optional(z.email()),
+  ADMIN_NOTIFICATION_EMAIL: optional(z.email()),
+
+  // URL publique du site une fois déployé (ex. https://chelba-coif.vercel.app
+  // ou un domaine personnalisé). Sert à construire des liens absolus (lien
+  // vers le dashboard dans l'e-mail de notification, metadataBase). Un
+  // placeholder est utilisé tant qu'elle n'est pas renseignée — voir
+  // src/lib/site.ts.
+  SITE_URL: optional(z.url()),
 }).refine((v) => v.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME === v.CLOUDINARY_CLOUD_NAME, {
   message: "NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME doit être identique à CLOUDINARY_CLOUD_NAME",
   path: ["NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME"],

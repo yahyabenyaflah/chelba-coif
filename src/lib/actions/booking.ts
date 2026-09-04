@@ -10,14 +10,20 @@ import {
   getServiceById,
   getSettings,
   getUpcomingClosures,
-  findBookingByReference,
+  findBookingsByPhone,
 } from "@/lib/data";
 import { isValidSlotStart } from "@/lib/booking/slots";
+import { newBookingEmail, sendAdminNotification } from "@/lib/email";
 import { clientIp, hashKey, rateLimit } from "@/lib/rate-limit";
-import { addDaysToKey, salonWallClockToInstant, todayKey } from "@/lib/time";
-import { generateReference } from "@/lib/utils";
-import { bookingLookupSchema, createBookingSchema, fieldErrors } from "@/lib/validation";
-import { errorState, successState, type ActionState } from "./types";
+import { addDaysToKey, formatDateTime, salonWallClockToInstant, todayKey } from "@/lib/time";
+import { formatPrice, generateReference } from "@/lib/utils";
+import {
+  bookingCancelSchema,
+  bookingLookupSchema,
+  createBookingSchema,
+  fieldErrors,
+} from "@/lib/validation";
+import { errorState, successState, type ActionState, type LookupState } from "./types";
 
 /**
  * Codes d'erreur PostgreSQL utiles ici.
@@ -147,6 +153,23 @@ export async function createBookingAction(
       revalidatePath("/admin/reservations");
       if (customer) revalidatePath("/compte");
 
+      // Attendue (pas fire-and-forget) : une fonction serverless peut être
+      // arrêtée dès la réponse envoyée, une promesse non attendue risquerait
+      // de ne jamais s'exécuter. Les erreurs sont avalées à l'intérieur de
+      // `sendAdminNotification`, donc la réservation ne peut pas échouer à
+      // cause d'un souci d'e-mail.
+      await sendAdminNotification(
+        newBookingEmail({
+          contactName: input.contactName,
+          contactPhone: input.contactPhone,
+          serviceName: service.name,
+          dateLabel: formatDateTime(startsAt),
+          priceLabel: formatPrice(service.priceMillimes),
+          notes: input.notes,
+          reference,
+        }),
+      );
+
       return successState(
         "Votre demande est enregistrée. Le salon la confirmera rapidement.",
         { reference, day: input.day, minutes: String(input.minutes) },
@@ -167,58 +190,69 @@ export async function createBookingAction(
   return errorState("Impossible d'enregistrer la réservation. Réessayez.");
 }
 
-/** Consultation d'une réservation sans compte : code + téléphone. */
+/**
+ * Consultation sans compte : le numéro de téléphone seul suffit à retrouver
+ * les réservations qui lui sont associées (peut en renvoyer plusieurs).
+ *
+ * Sans code secret pour authentifier la requête, le numéro tient lieu de
+ * seule preuve — quiconque connaît le numéro d'un client peut voir ses
+ * rendez-vous. C'est un choix assumé pour un salon de quartier ; la limite de
+ * débit ci-dessous freine le sondage en masse de numéros, pas la
+ * consultation d'un numéro déjà connu de l'attaquant.
+ */
 export async function lookupBookingAction(
-  _prev: ActionState,
+  _prev: LookupState,
   formData: FormData,
-): Promise<ActionState> {
+): Promise<LookupState> {
   const ip = await clientIp();
-  // Limite serrée : le couple code + téléphone tient lieu de mot de passe,
-  // il ne doit pas pouvoir être deviné par énumération.
   const limit = await rateLimit({
     key: `lookup:ip:${await hashKey(ip)}`,
     limit: 15,
     windowSec: 900,
   });
   if (!limit.ok) {
-    return errorState("Trop de tentatives. Réessayez dans quelques minutes.");
+    return { status: "error", message: "Trop de tentatives. Réessayez dans quelques minutes." };
   }
 
-  const parsed = bookingLookupSchema.safeParse({
-    reference: formData.get("reference"),
-    phone: formData.get("phone"),
-  });
+  const parsed = bookingLookupSchema.safeParse({ phone: formData.get("phone") });
   if (!parsed.success) {
-    return errorState("Vérifiez le code et le numéro.", fieldErrors(parsed.error));
+    return {
+      status: "error",
+      message: "Vérifiez le numéro de téléphone.",
+      errors: fieldErrors(parsed.error),
+    };
   }
 
-  const booking = await findBookingByReference(parsed.data.reference, parsed.data.phone);
-  if (!booking) {
-    // Message unique : ne révèle pas si c'est le code ou le numéro qui cloche.
-    return errorState("Aucune réservation ne correspond à ce code et ce numéro.");
+  const bookings = await findBookingsByPhone(parsed.data.phone);
+  if (bookings.length === 0) {
+    return { status: "error", message: "Aucune réservation ne correspond à ce numéro." };
   }
 
-  return successState("Réservation trouvée.", {
-    reference: booking.reference,
-    status: booking.status,
-    serviceName: booking.serviceName,
-    startsAt: booking.startsAt.toISOString(),
-    priceMillimes: String(booking.priceMillimes),
-    phone: parsed.data.phone,
-  });
+  return {
+    status: "success",
+    message: `${bookings.length} réservation${bookings.length > 1 ? "s" : ""} trouvée${bookings.length > 1 ? "s" : ""}.`,
+    bookings: bookings.map((b) => ({
+      id: b.id,
+      reference: b.reference,
+      status: b.status,
+      serviceName: b.serviceName,
+      startsAt: b.startsAt.toISOString(),
+      priceMillimes: b.priceMillimes,
+    })),
+  };
 }
 
-/** Annulation par le client (invité ou connecté). */
+/** Annulation par le client (invité ou connecté) : identifie la réservation par id + téléphone. */
 export async function cancelBookingAction(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  const parsed = bookingLookupSchema.safeParse({
-    reference: formData.get("reference"),
+  const parsed = bookingCancelSchema.safeParse({
+    bookingId: formData.get("bookingId"),
     phone: formData.get("phone"),
   });
   if (!parsed.success) {
-    return errorState("Vérifiez le code et le numéro.", fieldErrors(parsed.error));
+    return errorState("Requête invalide.");
   }
 
   const ip = await clientIp();
@@ -230,14 +264,14 @@ export async function cancelBookingAction(
   if (!limit.ok) return errorState("Trop de tentatives. Réessayez plus tard.");
 
   const db = getDb();
-  // La condition de propriété (code + téléphone) est dans le WHERE : aucune
+  // La condition de propriété (id + téléphone) est dans le WHERE : aucune
   // ligne n'est modifiée si elle n'est pas satisfaite.
   const updated = await db
     .update(schema.bookings)
     .set({ status: "cancelled", cancelledAt: new Date(), updatedAt: new Date() })
     .where(
       and(
-        eq(schema.bookings.reference, parsed.data.reference),
+        eq(schema.bookings.id, parsed.data.bookingId),
         eq(schema.bookings.contactPhone, parsed.data.phone),
         inArray(schema.bookings.status, ["pending", "confirmed"]),
       ),

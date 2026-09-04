@@ -213,17 +213,20 @@ const bookingColumns = {
 /** Dérivé d'une requête réelle : reste juste si `bookingColumns` évolue. */
 export type BookingRow = Awaited<ReturnType<typeof getUpcomingBookings>>[number];
 
-/** Consultation sans compte : le code seul ne suffit pas, le téléphone aussi. */
-export async function findBookingByReference(reference: string, phone: string) {
-  const rows = await getDb()
+/**
+ * Consultation sans compte : le numéro de téléphone suffit à retrouver les
+ * réservations qui lui sont associées (celles faites avec ce numéro, avec ou
+ * sans compte client). Peut renvoyer plusieurs lignes — un même numéro peut
+ * avoir plusieurs rendez-vous.
+ */
+export async function findBookingsByPhone(phone: string) {
+  return getDb()
     .select(bookingColumns)
     .from(schema.bookings)
     .innerJoin(schema.services, eq(schema.bookings.serviceId, schema.services.id))
-    .where(
-      and(eq(schema.bookings.reference, reference), eq(schema.bookings.contactPhone, phone)),
-    )
-    .limit(1);
-  return rows[0] ?? null;
+    .where(eq(schema.bookings.contactPhone, phone))
+    .orderBy(desc(schema.bookings.startsAt))
+    .limit(20);
 }
 
 export async function getCustomerBookings(customerId: string) {

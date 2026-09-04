@@ -82,13 +82,14 @@ export const createBookingSchema = z.object({
   notes: z.string().trim().max(500, { message: "500 caractères maximum" }).default(""),
 });
 
+/** Suivi/annulation d'une réservation : le numéro de téléphone suffit. */
 export const bookingLookupSchema = z.object({
-  // Le code est saisi à la main : on tolère la casse et les espaces.
-  reference: z
-    .string()
-    .trim()
-    .toUpperCase()
-    .regex(/^[A-Z0-9]{6}$/, { message: "Code à 6 caractères (ex. K7P2QM)" }),
+  phone: phoneSchema,
+});
+
+/** Annulation d'une réservation précise (le téléphone désigné l'a créée). */
+export const bookingCancelSchema = z.object({
+  bookingId: z.uuid({ message: "Réservation invalide" }),
   phone: phoneSchema,
 });
 
