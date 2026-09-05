@@ -1,12 +1,12 @@
 import type { Metadata, Viewport } from "next";
-import { IBM_Plex_Sans, Space_Grotesk } from "next/font/google";
+import { IBM_Plex_Sans, Playfair_Display, Space_Grotesk } from "next/font/google";
 
 import "./globals.css";
 
 /**
  * Polices auto-hébergées via next/font : aucune requête vers Google au
  * chargement, pas de décalage de mise en page (voir globals.css pour le
- * raccordement aux tokens --font-display / --font-body).
+ * raccordement aux tokens --font-display / --font-body / --font-accent).
  */
 const heading = Space_Grotesk({
   subsets: ["latin"],
@@ -19,6 +19,19 @@ const body = IBM_Plex_Sans({
   subsets: ["latin"],
   weight: ["400", "500", "600"],
   variable: "--font-body-src",
+  display: "swap",
+});
+
+/**
+ * Accent éditorial en serif italique — citations, chiffres clés. Un contraste
+ * de voix (sans-serif net + serif manuscrite) est ce qui distingue une
+ * identité pensée d'un gabarit générique.
+ */
+const accent = Playfair_Display({
+  subsets: ["latin"],
+  weight: ["500", "600"],
+  style: ["italic"],
+  variable: "--font-accent-src",
   display: "swap",
 });
 
@@ -61,7 +74,14 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="fr" className={`h-full antialiased ${heading.variable} ${body.variable}`}>
+    <html
+      lang="fr"
+      // Requis par Next.js 16 dès que `scroll-behavior: smooth` est défini en
+      // CSS (voir globals.css) : signale explicitement au routeur de ne pas
+      // interférer avec la restauration de défilement entre les pages.
+      data-scroll-behavior="smooth"
+      className={`h-full antialiased ${heading.variable} ${body.variable} ${accent.variable}`}
+    >
       <body className="flex min-h-full flex-col">
         <a
           href="#contenu"

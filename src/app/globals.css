@@ -47,6 +47,9 @@
      zéro requête vers Google au chargement. */
   --font-display: var(--font-heading-src), ui-sans-serif, system-ui, sans-serif;
   --font-body: var(--font-body-src), ui-sans-serif, system-ui, sans-serif;
+  /* Accent éditorial (citations, chiffres clés) : casse l'uniformité
+     sans-serif générique en apportant une voix plus humaine, manuscrite. */
+  --font-accent: var(--font-accent-src), Georgia, serif;
 }
 
 html {
@@ -103,6 +106,33 @@ body {
 .scroll-x {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
+}
+
+/*
+ * Grain papier, très subtil (3 % d'opacité) : rompt le fond parfaitement uni
+ * qui donne un aspect « rendu 3D générique ». SVG en `background-image` plutôt
+ * qu'un fichier image : aucun asset à charger, poids nul.
+ */
+.grain {
+  position: relative;
+  isolation: isolate;
+}
+.grain::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0.05;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* Bascule le plan de perspective 3D sur un conteneur de cartes inclinables
+   (voir components/motion/tilt-card.tsx). Sur l'enfant transformé, le GPU
+   compose uniquement `transform` : aucun repaint, aucun coût de mise en page. */
+.tilt-perspective {
+  perspective: 1000px;
 }
 
 @media (prefers-reduced-motion: reduce) {

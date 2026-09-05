@@ -37,6 +37,9 @@ yarn-error.log*
 # vercel
 .vercel
 
+# worktrees temporaires créés par les agents de recherche (isolation: "worktree")
+.claude/worktrees/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

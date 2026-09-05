@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { Award, Clock, MapPin, Phone, Scissors } from "lucide-react";
+import { Award, Clock, MapPin, Phone } from "lucide-react";
 
 import { getActiveServices, getGallery, getOpeningRules, getSettings } from "@/lib/data";
 import { formatDuration, formatPhone, formatPrice } from "@/lib/utils";
@@ -9,6 +9,9 @@ import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { CloudinaryImage } from "@/components/cloudinary-image";
 import { LogoMark } from "@/components/logo";
+import { Reveal } from "@/components/motion/reveal";
+import { TiltCard } from "@/components/motion/tilt-card";
+import { Magnetic } from "@/components/motion/magnetic";
 
 export const metadata: Metadata = {
   title: "Accueil",
@@ -27,45 +30,51 @@ export default async function HomePage() {
   const previewServices = services.slice(0, 6);
 
   return (
-    <div className="flex flex-1 flex-col bg-charcoal text-ivory font-body">
+    <div className="flex flex-1 flex-col overflow-x-clip bg-charcoal text-ivory font-body">
       <SiteHeader />
 
       <main id="contenu" className="flex flex-1 flex-col">
-        {/* Hero */}
-        <section
-          id="accueil"
-          className="mx-auto grid w-full max-w-6xl flex-1 items-center gap-12 px-6 py-20 sm:grid-cols-2 sm:py-28"
-        >
-          <div className="rise-in">
-            <p className="mb-4 text-sm text-djerba-blue">{settings.address}</p>
-            <h1 className="font-display text-5xl font-semibold leading-[1.05] tracking-tight sm:text-6xl">
-              La coupe nette,
-              <br />
-              le style qui dure.
-            </h1>
-            <p className="mt-6 max-w-md text-stone">
-              {settings.salonName} est un barbershop moderne à Djerba : coupes, dégradés, taille
-              de barbe et une sélection de produits de soin pour homme. Réservez votre créneau en
-              ligne, sans attendre.
-            </p>
-            <div className="mt-8 flex flex-wrap gap-4">
-              <Link
-                href="/reserver"
-                className="rounded-sm bg-brass px-6 py-3 text-sm font-medium text-charcoal transition-all hover:scale-[1.03] hover:bg-brass-soft"
-              >
-                Réserver un créneau
-              </Link>
-              <a
-                href={`tel:${settings.phone}`}
-                className="flex items-center gap-2 rounded-sm border border-stone/40 px-6 py-3 text-sm font-medium text-ivory transition-colors hover:border-ivory"
-              >
-                <Phone size={15} aria-hidden="true" />
-                {formatPhone(settings.phone)}
-              </a>
+        {/* Hero — asymétrique volontairement : le texte déborde vers le
+            monogramme plutôt que deux colonnes égales, et le monogramme est
+            posé légèrement de travers, comme accroché à la main. */}
+        <section id="accueil" className="grain relative flex-1 px-6 py-20 sm:py-28">
+          <div className="mx-auto grid w-full max-w-6xl items-center gap-8 sm:grid-cols-5 sm:gap-4">
+            <div className="rise-in sm:col-span-3">
+              <p className="mb-4 font-accent font-medium text-lg text-djerba-blue">
+                — depuis Djerba, pour ceux qui aiment le travail bien fait
+              </p>
+              <h1 className="font-display text-6xl font-semibold leading-[0.98] tracking-tight sm:text-7xl lg:text-8xl">
+                La coupe
+                <br />
+                nette,
+                <br />
+                <span className="text-brass">le style</span> qui dure.
+              </h1>
+              <p className="mt-7 max-w-md text-lg text-stone">
+                {settings.salonName} est un barbershop à Djerba : coupes, dégradés, taille de barbe
+                et soins pour homme, faits main, sans se presser.
+              </p>
+              <div className="mt-9 flex flex-wrap items-center gap-5">
+                <Magnetic>
+                  <Link
+                    href="/reserver"
+                    className="rounded-sm bg-brass px-7 py-3.5 text-sm font-medium text-charcoal transition-colors hover:bg-brass-soft"
+                  >
+                    Réserver un créneau
+                  </Link>
+                </Magnetic>
+                <a
+                  href={`tel:${settings.phone}`}
+                  className="flex items-center gap-2 text-sm font-medium text-ivory underline decoration-stone/40 decoration-2 underline-offset-8 transition-colors hover:decoration-brass"
+                >
+                  <Phone size={15} aria-hidden="true" />
+                  {formatPhone(settings.phone)}
+                </a>
+              </div>
             </div>
-          </div>
-          <div className="flex items-center justify-center">
-            <LogoMark className="h-56 w-56 sm:h-72 sm:w-72" />
+            <div className="flex items-center justify-center sm:col-span-2 sm:justify-end">
+              <LogoMark className="h-48 w-48 rotate-[-4deg] sm:h-64 sm:w-64" />
+            </div>
           </div>
         </section>
 
@@ -79,10 +88,12 @@ export default async function HomePage() {
           }}
         />
 
-        {/* Prestations */}
-        <section id="coupes" className="mx-auto w-full max-w-6xl px-6 py-20">
-          <div className="mb-10 flex items-baseline justify-between gap-4">
-            <h2 className="font-display text-3xl font-semibold tracking-tight">
+        {/* Prestations — présentées en carte de menu, pas en grille de
+            widgets : numérotation manuscrite, traits fins plutôt que
+            cartes bordées, pour une lecture plus « atelier » que SaaS. */}
+        <section id="coupes" className="mx-auto w-full max-w-4xl px-6 py-24">
+          <div className="mb-12 flex items-baseline justify-between gap-4">
+            <h2 className="font-display text-4xl font-semibold tracking-tight">
               Coupes &amp; prestations
             </h2>
             <Link href="/reserver" className="whitespace-nowrap text-sm text-brass hover:underline">
@@ -92,63 +103,68 @@ export default async function HomePage() {
           {previewServices.length === 0 ? (
             <p className="text-stone">Les prestations seront bientôt publiées.</p>
           ) : (
-            <ul className="grid gap-4 sm:grid-cols-2">
-              {previewServices.map((service) => (
-                <li
+            <Reveal className="flex flex-col">
+              {previewServices.map((service, i) => (
+                <div
                   key={service.id}
-                  className="group flex items-center gap-4 rounded-sm border border-brass-soft/30 p-4 transition-all hover:-translate-y-0.5 hover:border-brass hover:bg-charcoal-raised"
+                  className="group flex items-center gap-6 border-t border-brass-soft/20 py-6 last:border-b"
                 >
-                  <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border-2 border-ivory/80 bg-charcoal">
-                    <Scissors size={22} className="text-brass" aria-hidden="true" />
+                  <span className="font-accent font-medium w-10 shrink-0 text-2xl text-brass/50">
+                    {String(i + 1).padStart(2, "0")}
                   </span>
                   <div className="min-w-0 flex-1">
-                    <p className="font-medium">{service.name}</p>
+                    <p className="font-display text-xl transition-colors group-hover:text-brass">
+                      {service.name}
+                    </p>
                     <p className="flex items-center gap-1.5 text-sm text-stone">
                       <Clock size={13} aria-hidden="true" />
                       {formatDuration(service.durationMin)}
                     </p>
                   </div>
-                  <span className="whitespace-nowrap font-display text-brass">
+                  <span className="whitespace-nowrap font-display text-2xl text-brass">
                     {formatPrice(service.priceMillimes)}
                   </span>
-                </li>
+                </div>
               ))}
-            </ul>
+            </Reveal>
           )}
         </section>
 
-        {/* Galerie */}
+        {/* Galerie — cartes inclinables au survol, légère rotation alternée
+            au repos pour casser la symétrie de grille parfaite. */}
         {previewCuts.length > 0 && (
           <section className="border-t border-brass-soft/30 bg-charcoal-raised">
-            <div className="mx-auto w-full max-w-6xl px-6 py-20">
-              <div className="mb-10 flex items-baseline justify-between gap-4">
-                <h2 className="font-display text-3xl font-semibold tracking-tight">Galerie</h2>
+            <div className="mx-auto w-full max-w-6xl px-6 py-24">
+              <div className="mb-12 flex items-baseline justify-between gap-4">
+                <h2 className="font-display text-4xl font-semibold tracking-tight">Galerie</h2>
                 <Link href="/coupes" className="whitespace-nowrap text-sm text-brass hover:underline">
                   Toute la galerie →
                 </Link>
               </div>
-              <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-                {previewCuts.map((cut) => (
-                  <figure key={cut.id} className="overflow-hidden rounded-sm">
-                    <CloudinaryImage
-                      publicId={cut.cloudinaryPublicId}
-                      alt={cut.title}
-                      width={280}
-                      height={340}
-                      className="aspect-[4/5] w-full transition-transform duration-300 hover:scale-105"
-                      sizes="(min-width: 640px) 25vw, 50vw"
-                    />
-                    <figcaption className="mt-2 text-sm text-stone">{cut.title}</figcaption>
-                  </figure>
+              <Reveal className="grid grid-cols-2 gap-5 sm:grid-cols-4" y={36}>
+                {previewCuts.map((cut, i) => (
+                  <TiltCard key={cut.id} className={i % 2 === 0 ? "-rotate-1" : "rotate-1"}>
+                    <figure className="overflow-hidden rounded-sm border border-brass-soft/20">
+                      <CloudinaryImage
+                        publicId={cut.cloudinaryPublicId}
+                        alt={cut.title}
+                        width={280}
+                        height={340}
+                        className="aspect-[4/5] w-full"
+                        sizes="(min-width: 640px) 25vw, 50vw"
+                      />
+                      <figcaption className="p-2.5 text-sm text-stone">{cut.title}</figcaption>
+                    </figure>
+                  </TiltCard>
                 ))}
-              </div>
+              </Reveal>
             </div>
           </section>
         )}
 
         {/* Fidélité */}
-        <section className="mx-auto w-full max-w-6xl px-6 py-20">
-          <div className="flex flex-col items-start gap-6 rounded-sm border border-brass-soft/30 p-8 sm:flex-row sm:items-center sm:justify-between">
+        <section className="mx-auto w-full max-w-6xl px-6 py-24">
+          <div className="flex flex-col items-start gap-6 border border-brass-soft/30 p-10 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-start gap-4">
               <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-brass/10">
                 <Award size={22} className="text-brass" aria-hidden="true" />
@@ -173,10 +189,13 @@ export default async function HomePage() {
 
         {/* Contact */}
         <section id="contact" className="border-t border-brass-soft/30 bg-charcoal-raised">
-          <div className="mx-auto grid w-full max-w-6xl gap-10 px-6 py-20 sm:grid-cols-2">
+          <div className="mx-auto grid w-full max-w-6xl gap-10 px-6 py-24 sm:grid-cols-2">
             <div>
-              <h2 className="font-display text-3xl font-semibold tracking-tight">Nous trouver</h2>
-              <dl className="mt-6 space-y-4 text-stone">
+              <h2 className="font-display text-4xl font-semibold tracking-tight">Nous trouver</h2>
+              <p className="font-accent font-medium mt-3 text-lg text-djerba-blue">
+                à deux pas du centre, facile à trouver.
+              </p>
+              <dl className="mt-8 space-y-4 text-stone">
                 <div>
                   <dt className="flex items-center gap-1.5 text-xs uppercase tracking-wide text-djerba-blue">
                     <MapPin size={13} aria-hidden="true" />
